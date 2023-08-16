@@ -52,6 +52,19 @@ func TestRetry(t *testing.T) {
 	t.Log("contents: ", string(contents))
 }
 
+func TestFromPointer(t *testing.T) {
+	var x *string = nil
+	assert.Equal(t, "default", FromPointer(x, "default"))
+
+	y := "hello"
+	x = &y
+	assert.Equal(t, "hello", FromPointer(x, "default"))
+}
+
+func TestToPointer(t *testing.T) {
+	assert.Equal(t, 5, *ToPointer(5))
+}
+
 func TestGroupBy(t *testing.T) {
 	subjectScores := []SubjectScore{
 		{"math", 85, true},
@@ -71,12 +84,16 @@ func TestScoresOf(t *testing.T) {
 	assert.Equal(t, []int{85, 92}, scoresOf("math", subjectScores))
 }
 
-func TestBinaryTree(t *testing.T) {
-	var tree *BinaryTree[string, int] = nil
-	assert.Nil(t, tree.Lookup("a"))
-	tree = tree.Insert("a", 5)
-	assert.Equal(t, 5, *tree.Lookup("a"))
-	tree = tree.Insert("b", 3)
-	assert.Equal(t, 5, *tree.Lookup("a"))
-	assert.Equal(t, 3, *tree.Lookup("b"))
+func TestTreeMap(t *testing.T) {
+    tree := EmptyTreeMap[int, string]()
+	assert.Nil(t, tree.Lookup(5))
+
+	tree.Insert(5, "a")
+	assert.Equal(t, "a", *tree.Lookup(5))
+
+	tree.Insert(3, "b")
+	tree.Insert(7, "c")
+	assert.Equal(t, "a", *tree.Lookup(5))
+	assert.Equal(t, "b", *tree.Lookup(3))
+	assert.Equal(t, "c", *tree.Lookup(7))
 }

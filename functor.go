@@ -8,13 +8,13 @@ import (
 )
 
 // Converts minutes to seconds.
-func MinsToSecs(mins int) int { return mins * 60 }
+func MinutesToSeconds(minutes int) int { return minutes * 60 }
 
-// Returns the sum of seconds represented by an array of minutes.
+// Sums up the seconds in list of minutes.
 func SecondsSum1(minutesArr []int) int {
 	res := 0
 	for _, m := range minutesArr {
-		res += MinsToSecs(m)
+		res += MinutesToSeconds(m)
 	}
 	return res
 }
@@ -47,13 +47,24 @@ func ScoresSum1(subjectScores []SubjectScore) int {
 	return res
 }
 
-func MapSliceI(f func(interface{}) interface{}, xs []interface{}) []interface{} {
-	res := make([]interface{}, 0, len(xs))
-	for _, x := range xs {
-		res = append(res, f(x))
-	}
-	return res
+// Returns the sum of seconds of a list of minutes.
+func SecondsSum2(minutesArr []int) int {
+	return Sum(MapSlice(MinutesToSeconds, minutesArr))
 }
+
+// Returns the sum of all scores of a list of subject scores.
+func ScoresSum2(subjectScores []SubjectScore) int {
+	return Sum(MapSlice(GetScore, subjectScores))
+}
+
+// Maps each element of a slice using a given mapper function.
+// func MapSlice(f func(interface{}) interface{}, xs []interface{}) []interface{} {
+// 	res := make([]interface{}, 0, len(xs))
+// 	for _, x := range xs {
+// 		res = append(res, f(x))
+// 	}
+// 	return res
+// }
 
 // func secsSum2(minutesArr []int) int {
 //     secs := mapSliceI(minsToSecs, minutesArr)
@@ -81,16 +92,6 @@ func Sum[T constraints.Integer | constraints.Float](xs []T) T {
 	return res
 }
 
-// Returns the sum of seconds of a list of minutes.
-func SecondsSum2(minutesArr []int) int {
-	return Sum(MapSlice(MinsToSecs, minutesArr))
-}
-
-// Returns the sum of all scores of a list of subject scores.
-func ScoresSum2(subjectScores []SubjectScore) int {
-	return Sum(MapSlice(GetScore, subjectScores))
-}
-
 // Returns sum of scores of important subjects.
 func ImportantSubjectScores1(subjectScores []SubjectScore) int {
 	res := 0
@@ -100,6 +101,11 @@ func ImportantSubjectScores1(subjectScores []SubjectScore) int {
 		}
 	}
 	return res
+}
+
+// Returns sum of scores of important subjects.
+func ImportantSubjectScores2(subjectScores []SubjectScore) int {
+	return Sum(MapSlice(GetScore, FilterSlice(IsImportant, subjectScores)))
 }
 
 // Filters a slice.
@@ -113,12 +119,7 @@ func FilterSlice[A any](f func(A) bool, xs []A) []A {
 	return res
 }
 
-// Returns sum of scores of important subjects.
-func ImportantSubjectScores2(subjectScores []SubjectScore) int {
-	return Sum(MapSlice(GetScore, FilterSlice(IsImportant, subjectScores)))
-}
-
-// Retry a function until success.
+// Retry a function maxAttempts times or until success.
 func Retry[T any](maxAttempts int, interval time.Duration, f func() (T, error)) (T, error) {
 	var result T
 	var err error
@@ -133,6 +134,21 @@ func Retry[T any](maxAttempts int, interval time.Duration, f func() (T, error)) 
 	return result, err
 }
 
+// Safely dereference a pointer
+func FromPointer[T any](p *T, def T) T {
+	if p == nil {
+		return def
+	}
+	return *p
+}
+
+// Returns a pointer to a value
+func ToPointer[T any](x T) *T {
+	v := x
+	return &v
+}
+
+// BEGIN extra material
 func groupBy[A any, K comparable, V any](keyFn func(A) K, valFn func(A) V, xs []A) map[K][]V {
 	res := map[K][]V{}
 	for _, x := range xs {
@@ -169,14 +185,25 @@ func mapMap[A comparable, B any, C any](f func(B) C, kvs map[A]B) map[A]C {
 }
 
 // ------- BEGIN Tree Example ----------
+type TreeMap[K constraints.Ordered, V any] struct {
+	root *BinaryTreeNode[K, V]
+}
 
-type BinaryTree[K constraints.Ordered, V any] struct {
-	left, right *BinaryTree[K, V]
+func EmptyTreeMap[K constraints.Ordered, V any]() *TreeMap[K, V] {
+	return &TreeMap[K, V]{nil}
+}
+
+type BinaryTreeNode[K constraints.Ordered, V any] struct {
+	left, right *BinaryTreeNode[K, V]
 	key         K
 	value       V
 }
 
-func (t *BinaryTree[K, V]) Lookup(key K) *V {
+func (t *TreeMap[K, V]) Lookup(key K) *V {
+	return t.root.Lookup(key)
+}
+
+func (t *BinaryTreeNode[K, V]) Lookup(key K) *V {
 	if t == nil {
 		return nil
 	} else if key < t.key {
@@ -188,16 +215,22 @@ func (t *BinaryTree[K, V]) Lookup(key K) *V {
 	}
 }
 
-func (t *BinaryTree[K, V]) Insert(key K, value V) *BinaryTree[K, V] {
+func (t *TreeMap[K, V]) Insert(key K, value V) {
+	t.root = t.root.Insert(key, value)
+}
+
+func (t *BinaryTreeNode[K, V]) Insert(key K, value V) *BinaryTreeNode[K, V] {
 	if t == nil {
-		return &BinaryTree[K, V]{nil, nil, key, value}
+		t = &BinaryTreeNode[K, V]{nil, nil, key, value}
+		return t
 	} else if key < t.key {
-		left := t.left.Insert(key, value)
-		return &BinaryTree[K, V]{left, t.right, t.key, t.value}
+		t.left = t.left.Insert(key, value)
+		return t
 	} else if key > t.key {
-		right := t.right.Insert(key, value)
-		return &BinaryTree[K, V]{t.left, right, t.key, t.value}
+		t.right = t.right.Insert(key, value)
+		return t
 	} else {
-		return &BinaryTree[K, V]{t.left, t.right, t.key, value}
+		t.value = value
+		return t
 	}
 }
